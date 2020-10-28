@@ -1,0 +1,54 @@
+# Copyright 2020 Alibaba Group Holding Limited.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Build Vineyardd Binary
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Cache for cccahe
+        uses: actions/cache@v2
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ccache
+          restore-keys: |
+            ${{ runner.os }}-ccache
+
+      - name: Build wheel package on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo docker build . -f docker/Dockerfile.vineyardd -t docker.pkg.github.com/alibaba/libvineyard/vineyardd:alpine-${{ github.sha }}
+          sudo docker run --rm -v `pwd`:/target docker.pkg.github.com/alibaba/libvineyard/vineyard-wheel:${{ github.sha }} sh -c "cp /usr/bin/vineyardd /target/"
+          ldd ./vineyardd
+
+          sha512sum ./vineyardd > vineyardd.${{ github.sha }}.sha512sum
+          echo "Checksum is: "
+          cat ./*.sha512sum
+          tar zcvfh vineyardd.${{ github.sha }}.tar.gz ./vineyardd vineyardd.${{ github.sha }}.sha512sum
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vineyardd.${{ github.sha }}.tar.gz
+          path: vineyardd.${{ github.sha }}.tar.gz
