@@ -28,15 +28,12 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache for cccahe
-        uses: actions/cache@v2
-        with:
-          path: ~/.ccache
-          key: ${{ runner.os }}-ccache
-          restore-keys: |
-            ${{ runner.os }}-ccache
+      - name: Login docker registry
+        if: runner.os == "Linux"
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login https://docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
 
-      - name: Build wheel package on Linux
+      - name: Build vineyardd on Linux
         if: runner.os == 'Linux'
         run: |
           sudo docker build . -f docker/Dockerfile.vineyardd -t docker.pkg.github.com/alibaba/libvineyard/vineyardd:alpine-${{ github.sha }}
